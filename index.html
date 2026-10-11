@@ -1,68 +1,20 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stark VR Workshop V4 — Interaction Prototype</title>
-<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
-<style>body{margin:0}#help{position:fixed;top:12px;left:12px;z-index:10;color:white;background:#111c;padding:12px;border-radius:8px;font:14px system-ui;max-width:310px}</style>
-</head>
-<body>
-<div id="help">Stark VR Workshop V4 — first prototype<br>Enter VR on Quest 3. Pinch a cube to move it; use two hands to resize. Desktop: drag with mouse to look around. This is an early test, not Meta's full Interaction SDK.</div>
-<a-scene background="color:#101923" renderer="colorManagement:true" xr-mode-ui="enabled:true">
-<a-assets></a-assets>
-<a-entity light="type:ambient;intensity:0.65"></a-entity>
-<a-entity light="type:directional;intensity:1.1" position="-1 4 2"></a-entity>
-<a-plane rotation="-90 0 0" width="20" height="20" color="#202a33"></a-plane>
-<a-box position="0 0.82 -1.5" width="1.9" height="0.12" depth="1.05" color="#38434d"></a-box>
-<a-box position="-0.8 0.41 -1.9" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
-<a-box position="0.8 0.41 -1.9" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
-<a-box position="-0.8 0.41 -1.1" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
-<a-box position="0.8 0.41 -1.1" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
-<a-box class="grabbable" position="-0.42 1.02 -1.5" width="0.22" height="0.22" depth="0.22" color="#f4a340"></a-box>
-<a-box class="grabbable" position="0.05 1.02 -1.5" width="0.22" height="0.22" depth="0.22" color="#2ec4b6"></a-box>
-<a-sphere class="grabbable" position="0.48 1.02 -1.5" radius="0.12" color="#8d87ff"></a-sphere>
-<a-entity camera position="0 1.6 0" look-controls wasd-controls></a-entity>
-<a-entity id="leftHand" hand-tracking-controls="hand:left"></a-entity>
-<a-entity id="rightHand" hand-tracking-controls="hand:right"></a-entity>
-</a-scene>
-<script>
-/* Prototype pinch manipulation. Requires browser WebXR hand joint tracking. */
-const hands=[document.querySelector('#leftHand'),document.querySelector('#rightHand')];
-const items=[...document.querySelectorAll('.grabbable')];
-const state=hands.map(()=>({target:null,offset:new THREE.Vector3(),pinched:false}));
-const tip=new THREE.Vector3(),thumb=new THREE.Vector3(),pos=new THREE.Vector3();
-function jointPosition(hand,name,out){
- const tracker=hand.components['hand-tracking-controls'];
- const obj=tracker?.getJoint?.(name);
- if(!obj)return false;
- obj.getWorldPosition(out);return true;
-}
-function tick(){
- hands.forEach((hand,i)=>{
-  if(!jointPosition(hand,'index-finger-tip',tip)||!jointPosition(hand,'thumb-tip',thumb))return;
-  const pinched=tip.distanceTo(thumb)<0.032;
-  const s=state[i];
-  if(pinched&&!s.pinched){
-   let nearest=null,dist=0.24;
-   for(const item of items){item.object3D.getWorldPosition(pos);let d=pos.distanceTo(tip);if(d<dist){dist=d;nearest=item;}}
-   s.target=nearest;
-   if(nearest){nearest.object3D.getWorldPosition(pos);s.offset.copy(pos).sub(tip);}
-  }
-  if(pinched&&s.target){s.target.object3D.position.copy(tip).add(s.offset);}
-  if(!pinched)s.target=null;
-  s.pinched=pinched;
- });
- if(state[0].target&&state[0].target===state[1].target){
-  const a=new THREE.Vector3(),b=new THREE.Vector3();
-  if(jointPosition(hands[0],'index-finger-tip',a)&&jointPosition(hands[1],'index-finger-tip',b)){
-   const distance=a.distanceTo(b);
-   if(!window.lastTwoHandDistance)window.lastTwoHandDistance=distance;
-   else {const ratio=THREE.MathUtils.clamp(distance/window.lastTwoHandDistance,0.95,1.05);
-    state[0].target.object3D.scale.multiplyScalar(ratio);
-    window.lastTwoHandDistance=distance;}
-  }
- }else window.lastTwoHandDistance=0;
- requestAnimationFrame(tick);
-}
-document.querySelector('a-scene').addEventListener('loaded',()=>requestAnimationFrame(tick));
-</script>
-</body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stark VR Workshop V4 — Interaction Lab</title><style>body{margin:0;background:#07101d;color:#e6f5ff;font:14px system-ui}#hud{position:absolute;top:14px;left:14px;max-width:400px;background:#0a1729e8;border:1px solid #447b9a;border-radius:12px;padding:15px;z-index:2}h2{margin:0 0 7px;font-size:17px}p{margin:7px 0;line-height:1.4}#status{color:#82d6ff}button{background:#1c3e56;color:white;border:1px solid #7ab3d5;border-radius:8px;padding:10px;cursor:pointer}#enter{position:absolute;bottom:20px;right:20px}small{color:#a9bccc}</style></head><body><div id="hud"><h2>STARK / INTERACTION LAB V4.2</h2><p id="status">Desktop preview. Open this page in Quest Browser and enter VR.</p><p><b>Near:</b> pinch an object to grab it. <b>Far:</b> point your index finger at an object and pinch to pull it to your hand. <b>Two hands:</b> pinch the same object to scale and rotate it. <b>Release:</b> leave it floating. <b>Reset:</b> return everything home.</p><button id="reset">RETURN ALL HOME</button><p><small>Includes floating panels and objects. Experimental hand tracking; Quest 3 verification required.</small></p></div><div id="enter"></div><script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"}}</script><script type="module">
+import * as THREE from 'three';
+import {VRButton} from 'three/addons/webxr/VRButton.js';
+import {XRHandModelFactory} from 'three/addons/webxr/XRHandModelFactory.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x07101d);const camera=new THREE.PerspectiveCamera(70,innerWidth/innerHeight,.01,100);camera.position.set(0,1.6,3);const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.xr.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.appendChild(renderer.domElement);document.getElementById('enter').appendChild(VRButton.createButton(renderer,{requiredFeatures:['hand-tracking'],optionalFeatures:['local-floor','bounded-floor']}));scene.add(new THREE.HemisphereLight(0xc2e6ff,0x1e293a,2.5));const key=new THREE.DirectionalLight(0xffffff,2.8);key.position.set(2,4,2);scene.add(key);const grid=new THREE.GridHelper(20,40,0x294c65,0x162b3e);grid.position.y=-.01;scene.add(grid);
+const interactables=[];function register(obj){scene.add(obj);obj.userData.home={position:obj.position.clone(),quaternion:obj.quaternion.clone(),scale:obj.scale.clone()};interactables.push(obj);return obj}function mat(color){return new THREE.MeshStandardMaterial({color,metalness:.35,roughness:.3})}function object(geo,color,x,y,z){const o=new THREE.Mesh(geo,mat(color));o.position.set(x,y,z);return register(o)}object(new THREE.BoxGeometry(.27,.27,.27),0x48c9ff,-.65,1.42,-1.05);object(new THREE.TorusKnotGeometry(.16,.045,96,12),0xffa45d,0,1.5,-1.15);object(new THREE.IcosahedronGeometry(.21,1),0x8eea9c,.66,1.43,-1.05);
+function panel(title,lines,x,y,z){const canvas=document.createElement('canvas');canvas.width=768;canvas.height=480;const ctx=canvas.getContext('2d');ctx.fillStyle='#10233b';ctx.fillRect(0,0,768,480);ctx.strokeStyle='#55c8f2';ctx.lineWidth=10;ctx.strokeRect(9,9,750,462);ctx.fillStyle='#9ce7ff';ctx.font='bold 44px sans-serif';ctx.fillText(title,40,90);ctx.font='30px sans-serif';ctx.fillStyle='#dceeff';lines.forEach((s,i)=>ctx.fillText(s,40,165+i*62));const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.86,.54),new THREE.MeshBasicMaterial({map:texture,side:THREE.DoubleSide}));mesh.position.set(x,y,z);return register(mesh)}panel('MODEL INSPECTOR',['Pinch to move','Two hands: scale / rotate','Far pinch: summon'], -1.05,1.95,-1.45);panel('WORKSHOP CONTROL',['Floating interface test','Return all home','More panels later'],1.05,1.95,-1.45);
+const handFactory=new XRHandModelFactory();const hands=[];for(let i=0;i<2;i++){const hand=renderer.xr.getHand(i);hand.add(handFactory.createHandModel(hand,'mesh'));scene.add(hand);const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3(0,0,-1)]),new THREE.LineBasicMaterial({color:0x68d8ff,transparent:true,opacity:.55}));ray.visible=false;scene.add(ray);hands.push({hand,ray,pinched:false,target:null,offset:new THREE.Vector3(),mode:null})}
+const raycaster=new THREE.Raycaster();const origin=new THREE.Vector3(),direction=new THREE.Vector3(),tip=new THREE.Vector3(),thumbPos=new THREE.Vector3(),jointPos=new THREE.Vector3();const PINCH_ON=.027,PINCH_OFF=.052;let dual=null;const clock=new THREE.Clock();const homeAnimations=new Map();
+function handState(h){const thumb=h.hand.joints['thumb-tip'],index=h.hand.joints['index-finger-tip'],knuckle=h.hand.joints['index-finger-phalanx-proximal']||h.hand.joints['index-finger-metacarpal'];if(!thumb||!index||!thumb.visible||!index.visible)return null;thumb.getWorldPosition(thumbPos);index.getWorldPosition(tip);const p=thumbPos.clone().add(tip).multiplyScalar(.5);if(knuckle&&knuckle.visible){knuckle.getWorldPosition(jointPos);direction.copy(tip).sub(jointPos).normalize()}else{direction.copy(tip).sub(camera.getWorldPosition(origin)).normalize()}return {p,dist:thumbPos.distanceTo(tip),rayOrigin:tip.clone(),rayDirection:direction.clone()}}
+function nearTarget(p){let found=null,best=Infinity;for(const obj of interactables){const sphere=new THREE.Sphere();new THREE.Box3().setFromObject(obj).getBoundingSphere(sphere);const distance=p.distanceTo(sphere.center)-sphere.radius;if(distance<.14&&distance<best){best=distance;found=obj}}return found}
+function farTarget(state){raycaster.set(state.rayOrigin,state.rayDirection);raycaster.far=5;const hits=raycaster.intersectObjects(interactables,false);return hits.length?hits[0].object:null}
+function start(h,state,obj,mode){homeAnimations.delete(obj);h.pinched=true;h.target=obj;h.mode=mode;h.offset.copy(obj.position).sub(state.p)}
+function update(){const states=hands.map(h=>handState(h));for(let i=0;i<2;i++){const h=hands[i],s=states[i];h.ray.visible=!!s&&!h.pinched;if(s){const end=s.rayOrigin.clone().addScaledVector(s.rayDirection,2.5);h.ray.geometry.setFromPoints([s.rayOrigin,end]);}if(!s){h.pinched=false;h.target=null;h.mode=null;continue}if(h.pinched&&s.dist>PINCH_OFF){h.pinched=false;h.target=null;h.mode=null;continue}if(!h.pinched&&s.dist<PINCH_ON){const near=nearTarget(s.p);const far=near?null:farTarget(s);if(near||far)start(h,s,near||far,near?'near':'far')}}
+const a=hands[0],b=hands[1],sa=states[0],sb=states[1];if(a.pinched&&b.pinched&&a.target&&a.target===b.target&&sa&&sb){const obj=a.target,center=sa.p.clone().add(sb.p).multiplyScalar(.5),vec=sb.p.clone().sub(sa.p);if(!dual||dual.obj!==obj){dual={obj,center:center.clone(),vector:vec.clone(),pos:obj.position.clone(),quat:obj.quaternion.clone(),scale:obj.scale.clone()}}const d=dual,ratio=THREE.MathUtils.clamp(vec.length()/Math.max(.01,d.vector.length()),.3,4);obj.scale.copy(d.scale).multiplyScalar(ratio);const rot=new THREE.Quaternion().setFromUnitVectors(d.vector.clone().normalize(),vec.clone().normalize());obj.quaternion.copy(rot.multiply(d.quat));obj.position.copy(d.pos).add(center.sub(d.center));return}dual=null;
+for(let i=0;i<2;i++){const h=hands[i],s=states[i];if(!h.pinched||!h.target||!s)continue;const obj=h.target;if(h.mode==='far'){// Smoothly summon to a comfortable point in front of the hand, then continue as a near grab.
+const desired=s.p.clone().addScaledVector(s.rayDirection,.12);obj.position.lerp(desired,.19);if(obj.position.distanceTo(desired)<.055){h.mode='near';h.offset.copy(obj.position).sub(s.p)}}else obj.position.copy(s.p).add(h.offset)}}
+function reset(){for(const h of hands){h.pinched=false;h.target=null;h.mode=null}dual=null;for(const obj of interactables){const home=obj.userData.home;homeAnimations.set(obj,{fromPos:obj.position.clone(),fromQuat:obj.quaternion.clone(),fromScale:obj.scale.clone(),to:home,start:clock.getElapsedTime()+.15,duration:.55})}}
+document.getElementById('reset').onclick=reset;renderer.xr.addEventListener('sessionstart',()=>document.getElementById('status').textContent='Quest XR active — point, pinch, move, and scale.');renderer.xr.addEventListener('sessionend',()=>document.getElementById('status').textContent='Desktop preview. Open in Quest Browser for hand tracking.');renderer.setAnimationLoop(()=>{const t=clock.getElapsedTime();if(renderer.xr.isPresenting)update();for(const [obj,a] of homeAnimations){if(t<a.start)continue;const p=THREE.MathUtils.smoothstep((t-a.start)/a.duration,0,1);obj.position.lerpVectors(a.fromPos,a.to.position,p);obj.quaternion.copy(a.fromQuat).slerp(a.to.quaternion,p);obj.scale.lerpVectors(a.fromScale,a.to.scale,p);if(p>=1)homeAnimations.delete(obj)}renderer.render(scene,camera)});addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
