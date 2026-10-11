@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stark VR Workshop V4 — Interaction Prototype</title>
+<script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<style>body{margin:0}#help{position:fixed;top:12px;left:12px;z-index:10;color:white;background:#111c;padding:12px;border-radius:8px;font:14px system-ui;max-width:310px}</style>
+</head>
+<body>
+<div id="help">Stark VR Workshop V4 — first prototype<br>Enter VR on Quest 3. Pinch a cube to move it; use two hands to resize. Desktop: drag with mouse to look around. This is an early test, not Meta's full Interaction SDK.</div>
+<a-scene background="color:#101923" renderer="colorManagement:true" xr-mode-ui="enabled:true">
+<a-assets></a-assets>
+<a-entity light="type:ambient;intensity:0.65"></a-entity>
+<a-entity light="type:directional;intensity:1.1" position="-1 4 2"></a-entity>
+<a-plane rotation="-90 0 0" width="20" height="20" color="#202a33"></a-plane>
+<a-box position="0 0.82 -1.5" width="1.9" height="0.12" depth="1.05" color="#38434d"></a-box>
+<a-box position="-0.8 0.41 -1.9" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
+<a-box position="0.8 0.41 -1.9" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
+<a-box position="-0.8 0.41 -1.1" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
+<a-box position="0.8 0.41 -1.1" width="0.12" height="0.82" depth="0.12" color="#707e89"></a-box>
+<a-box class="grabbable" position="-0.42 1.02 -1.5" width="0.22" height="0.22" depth="0.22" color="#f4a340"></a-box>
+<a-box class="grabbable" position="0.05 1.02 -1.5" width="0.22" height="0.22" depth="0.22" color="#2ec4b6"></a-box>
+<a-sphere class="grabbable" position="0.48 1.02 -1.5" radius="0.12" color="#8d87ff"></a-sphere>
+<a-entity camera position="0 1.6 0" look-controls wasd-controls></a-entity>
+<a-entity id="leftHand" hand-tracking-controls="hand:left"></a-entity>
+<a-entity id="rightHand" hand-tracking-controls="hand:right"></a-entity>
+</a-scene>
+<script>
+/* Prototype pinch manipulation. Requires browser WebXR hand joint tracking. */
+const hands=[document.querySelector('#leftHand'),document.querySelector('#rightHand')];
+const items=[...document.querySelectorAll('.grabbable')];
+const state=hands.map(()=>({target:null,offset:new THREE.Vector3(),pinched:false}));
+const tip=new THREE.Vector3(),thumb=new THREE.Vector3(),pos=new THREE.Vector3();
+function jointPosition(hand,name,out){
+ const tracker=hand.components['hand-tracking-controls'];
+ const obj=tracker?.getJoint?.(name);
+ if(!obj)return false;
+ obj.getWorldPosition(out);return true;
+}
+function tick(){
+ hands.forEach((hand,i)=>{
+  if(!jointPosition(hand,'index-finger-tip',tip)||!jointPosition(hand,'thumb-tip',thumb))return;
+  const pinched=tip.distanceTo(thumb)<0.032;
+  const s=state[i];
+  if(pinched&&!s.pinched){
+   let nearest=null,dist=0.24;
+   for(const item of items){item.object3D.getWorldPosition(pos);let d=pos.distanceTo(tip);if(d<dist){dist=d;nearest=item;}}
+   s.target=nearest;
+   if(nearest){nearest.object3D.getWorldPosition(pos);s.offset.copy(pos).sub(tip);}
+  }
+  if(pinched&&s.target){s.target.object3D.position.copy(tip).add(s.offset);}
+  if(!pinched)s.target=null;
+  s.pinched=pinched;
+ });
+ if(state[0].target&&state[0].target===state[1].target){
+  const a=new THREE.Vector3(),b=new THREE.Vector3();
+  if(jointPosition(hands[0],'index-finger-tip',a)&&jointPosition(hands[1],'index-finger-tip',b)){
+   const distance=a.distanceTo(b);
+   if(!window.lastTwoHandDistance)window.lastTwoHandDistance=distance;
+   else {const ratio=THREE.MathUtils.clamp(distance/window.lastTwoHandDistance,0.95,1.05);
+    state[0].target.object3D.scale.multiplyScalar(ratio);
+    window.lastTwoHandDistance=distance;}
+  }
+ }else window.lastTwoHandDistance=0;
+ requestAnimationFrame(tick);
+}
+document.querySelector('a-scene').addEventListener('loaded',()=>requestAnimationFrame(tick));
+</script>
+</body></html>
